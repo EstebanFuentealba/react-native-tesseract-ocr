@@ -3,8 +3,11 @@ package com.reactlibrary;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Environment;
-import android.support.annotation.Nullable;
+import androidx.annotation.Nullable;
+
+import android.util.Base64;
 import android.util.Log;
 
 import com.facebook.react.bridge.Promise;
@@ -154,7 +157,10 @@ public class RNTesseractOcrModule extends ReactContextBaseJavaModule {
 	public void startOcr(String path, String lang, Promise promise) {
 		this.recognize(path, lang, null, promise);
 	}
-
+	private boolean isBase64File(Uri uri) {
+		String scheme = uri.getScheme();
+		return ((scheme != null) && uri.getScheme().equals("data"));
+	}
 	@ReactMethod
 	public void recognize(String path, String lang, @Nullable ReadableMap tessOptions, Promise promise) {
 		prepareTesseract();
@@ -167,9 +173,16 @@ public class RNTesseractOcrModule extends ReactContextBaseJavaModule {
 			// TODO:
 			// Check image size before use inSampleSize (maybe this could help) --> https://goo.gl/4MvBvB
 			// considering that when inSampleSize is used (usually to save memory) the ocr quality decreases
-
+			Uri uri = Uri.parse(path);
+			Bitmap bitmap;
+			if(this.isBase64File(uri)) {
+				String encodedImage = path.substring(path.indexOf(",") + 1);
+				byte[] decodedString = Base64.decode(encodedImage.getBytes(), Base64.DEFAULT);
+				bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+			} else {
+				bitmap = BitmapFactory.decodeFile(path, options);
+			}
 			//options.inSampleSize = 4; //inSampleSize documentation --> http://goo.gl/KRrlvi
-			Bitmap bitmap = BitmapFactory.decodeFile(path, options);
 
 			String result = extractText(bitmap, lang, tessOptions);
 
